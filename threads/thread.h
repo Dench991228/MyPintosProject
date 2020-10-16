@@ -97,7 +97,12 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-   
+   /*is the thread sleeping*/
+   bool isSleep;
+   /*the time when thread start to sleep*/
+   int64_t start_tick;
+   /*the time thread going to sleep*/
+   int64_t sleep_tick;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
@@ -139,3 +144,4 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
+void checkSleep(struct thread *t, void *aux);
