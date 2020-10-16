@@ -88,11 +88,16 @@ timer_elapsed (int64_t then)
    be turned on. */
 void timer_sleep (int64_t ticks) 
 {
+  if(ticks<=0)return;
   int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  /* get the current thread, and save the information about this sleep*/
+  struct thread* t = thread_current();
+  t->isSleep = true;
+  t->start_tick = start;
+  t->sleep_tick = ticks;
+  intr_disable();
+  thread_block();
+  asm volatile("sti":::"memory");
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,6 +176,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_foreach(checkSleep,NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
