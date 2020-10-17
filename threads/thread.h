@@ -144,4 +144,9 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
+/*the function used to check whether the thread is sleeping*/
 void checkSleep(struct thread *t, void *aux);
+/*the funciton of comparing two threads' priority in all_list*/
+bool comparePriorityAllElem(struct list_elem* a, struct list_elem *b, void* aux);
+/*the function of comparing two threads' priority in ready_list*/
+bool comparePriorityElem(struct list_elem* a, struct list_elem *b, void* aux);
