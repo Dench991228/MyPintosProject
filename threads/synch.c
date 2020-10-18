@@ -197,8 +197,31 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  /*boost the holder's priority to make it run earlier*/
+  /*yield after donation*/
+  enum intr_level old_level = intr_disable();
+  if(lock!=NULL){
+    /*update the lock we're waiting for*/
+    thread_current()->lock_wait = lock;
+
+    struct lock *l = lock;
+    struct thread *receiver = l->holder;
+    while(l!=NULL&&receiver!=NULL&&receiver->priority<thread_current()->priority){
+      //donatePriority(receiver, thread_current()->priority);
+      l = receiver->lock_wait;
+      if(l==NULL)break;
+      receiver = l->holder;
+    }
+  }
+  intr_set_level(old_level);
+
   sema_down (&lock->semaphore);
+
+  /*do something shows that the lock had been acquired*/
+  old_level = intr_disable();
+  hold_lock(lock);
   lock->holder = thread_current ();
+  intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -214,7 +237,6 @@ lock_try_acquire (struct lock *lock)
 
   ASSERT (lock != NULL);
   ASSERT (!lock_held_by_current_thread (lock));
-
   success = sema_try_down (&lock->semaphore);
   if (success)
     lock->holder = thread_current ();
@@ -231,8 +253,11 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  enum intr_level old_level = intr_disable();
+  release_lock(lock);
+  //TODO: restore the priority before donation
   lock->holder = NULL;
+  intr_set_level(old_level);
   sema_up (&lock->semaphore);
 }
 
@@ -349,4 +374,29 @@ bool comparePrioritySema(struct list_elem* a, struct list_elem* b, void* aux UNU
   struct thread *tb = list_entry(list_begin(&(sb->semaphore.waiters)), struct thread, elem);
   //printf("%d,%d\n", ta->priority, tb->priority);
   return ta->priority>tb->priority;
+}
+
+void donatePriority(struct thread *t, int new_priority){
+  
+}
+
+void restorePriority(){
+  //printf("restore to %d\n", thread_current()->priority);
+  //thread_current()->priority = thread_current()->base_priority;
+  //if(need_yield){
+    //printf("restored!\n");
+    //thread_yield();
+  //}
+}
+
+/*set the thread's waiting lock as NULL*/
+/*add into the thread's acquired lock*/
+void hold_lock(struct lock *l){
+  struct thread *cur = thread_current();
+  cur->lock_wait=NULL;
+  list_push_back(&cur->locks, &l->elem);
+}
+/*remove the lock from acquired locks*/
+void release_lock(struct lock *l){
+  list_remove(&l->elem);
 }

@@ -21,14 +21,6 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
-static struct list ready_list;
-
-/* List of all processes.  Processes are added to this list
-   when they are first scheduled and removed when they exit. */
-static struct list all_list;
-
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -474,6 +466,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   t->isSleep=false;
+  t->lock_wait=NULL;
+  list_init(&t->locks);
+  t->base_priority = priority;
   list_insert_ordered (&all_list, &t->allelem, comparePriorityAllElem, NULL);
 }
 

@@ -103,10 +103,22 @@ struct thread
    int64_t start_tick;
    /*the time thread going to sleep*/
    int64_t sleep_tick;
+   /*the lock the thread is waiting for*/
+   struct lock* lock_wait;
+   /*the list of locks that the thread is holding*/
+   struct list locks;
+   /*the original priority*/
+   int base_priority;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+static struct list ready_list;
 
+/* List of all processes.  Processes are added to this list
+   when they are first scheduled and removed when they exit. */
+static struct list all_list;
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -150,3 +162,4 @@ void checkSleep(struct thread *t, void *aux);
 bool comparePriorityAllElem(struct list_elem* a, struct list_elem *b, void* aux);
 /*the function of comparing two threads' priority in ready_list*/
 bool comparePriorityElem(struct list_elem* a, struct list_elem *b, void* aux);
+
