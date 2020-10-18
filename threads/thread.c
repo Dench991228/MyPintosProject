@@ -337,6 +337,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  thread_current()->base_priority = new_priority;
   if(list_entry(list_max(&ready_list, comparePriorityElem,NULL),struct thread, elem)->priority>new_priority){
     thread_yield();
   }

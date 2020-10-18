@@ -203,13 +203,19 @@ lock_acquire (struct lock *lock)
   if(lock!=NULL){
     /*update the lock we're waiting for*/
     thread_current()->lock_wait = lock;
-
     struct lock *l = lock;
     struct thread *receiver = l->holder;
     while(l!=NULL&&receiver!=NULL&&receiver->priority<thread_current()->priority){
-      //donatePriority(receiver, thread_current()->priority);
+      donatePriority(receiver, thread_current()->priority);
       l = receiver->lock_wait;
-      if(l==NULL)break;
+      if(l==NULL){// just sort the ready_list because the donated wasn't waiting for a lock
+        if(list_empty(&ready_list))list_sort(&ready_list, comparePriorityElem,NULL);
+        thread_yield();
+        break;
+      }
+      else{// just sort the waiting list of the lock
+        list_sort(&(lock->semaphore.waiters), comparePriorityElem, NULL);
+      }
       receiver = l->holder;
     }
   }
@@ -256,9 +262,11 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable();
   release_lock(lock);
   //TODO: restore the priority before donation
+  restorePriority();
   lock->holder = NULL;
   intr_set_level(old_level);
   sema_up (&lock->semaphore);
+  thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -376,17 +384,30 @@ bool comparePrioritySema(struct list_elem* a, struct list_elem* b, void* aux UNU
   return ta->priority>tb->priority;
 }
 
-void donatePriority(struct thread *t, int new_priority){
-  
+/*compare the priority of two locks' most significant waiter*/
+bool comparePriorityLock(struct list_elem *a, struct list_elem *b, void *aux UNUSED){
+  struct lock *la = list_entry(a, struct lock, elem);
+  struct lock *lb = list_entry(b, struct lock, elem);
+  struct thread *max_priority_thread_a = list_entry(list_max(&la->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
+  struct thread *max_priority_thread_b = list_entry(list_max(&lb->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
+  return max_priority_thread_a->priority>max_priority_thread_b->priority;
 }
 
+void donatePriority(struct thread *t, int new_priority){
+  t->priority = new_priority;
+}
+/*return to base priority if not holding any locks*/
+/*return to the priority whose waiter has the highest priority if it is bigger than base_priority*/
 void restorePriority(){
-  //printf("restore to %d\n", thread_current()->priority);
-  //thread_current()->priority = thread_current()->base_priority;
-  //if(need_yield){
-    //printf("restored!\n");
-    //thread_yield();
-  //}
+  if(list_empty(&thread_current()->locks)){
+    thread_current()->priority = thread_current()->base_priority;
+  }
+  else{
+    struct lock *most_significant_lock = list_entry(list_max(&thread_current()->locks, comparePriorityLock, NULL),struct lock, elem);
+    struct thread *most_significant_thread = list_entry(list_max(&most_significant_lock->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
+    int lower_bound_needed_priority = most_significant_thread->priority;
+    thread_current()->priority = lower_bound_needed_priority>thread_current()->base_priority?lower_bound_needed_priority:thread_current()->base_priority;
+  }
 }
 
 /*set the thread's waiting lock as NULL*/
