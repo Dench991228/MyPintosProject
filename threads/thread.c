@@ -336,7 +336,14 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  if(list_empty(&thread_current()->locks)){
+    thread_current()->priority = new_priority;
+  }
+  else{
+    if(new_priority>thread_current()){
+      thread_current()->priority = new_priority;
+    }
+  }
   thread_current()->base_priority = new_priority;
   if(list_entry(list_max(&ready_list, comparePriorityElem,NULL),struct thread, elem)->priority>new_priority){
     thread_yield();
