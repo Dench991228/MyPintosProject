@@ -15,6 +15,7 @@
 #include "threads/init.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "devices/timer.h"
 
 struct lock_and_sema 
   {
@@ -44,6 +45,7 @@ test_priority_donate_sema (void)
   thread_create ("high", PRI_DEFAULT + 5, h_thread_func, &ls);
   sema_up (&ls.sema);
   msg ("Main thread finished.");
+  timer_sleep(10000);
 }
 
 static void

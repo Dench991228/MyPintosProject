@@ -113,9 +113,11 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+  if (!list_empty (&sema->waiters)) {
+    list_sort(&sema->waiters,comparePriorityElem, NULL);
+    thread_unblock (list_entry (list_pop_front (&sema->waiters),struct thread, elem));
+  }
+    
   sema->value++;
   intr_set_level (old_level);
   thread_yield();
@@ -210,7 +212,7 @@ lock_acquire (struct lock *lock)
       l = receiver->lock_wait;
       if(l==NULL){// just sort the ready_list because the donated wasn't waiting for a lock
         if(list_empty(&ready_list))list_sort(&ready_list, comparePriorityElem,NULL);
-        thread_yield();
+        //thread_yield();
         break;
       }
       else{// just sort the waiting list of the lock
@@ -388,9 +390,17 @@ bool comparePrioritySema(struct list_elem* a, struct list_elem* b, void* aux UNU
 bool comparePriorityLock(struct list_elem *a, struct list_elem *b, void *aux UNUSED){
   struct lock *la = list_entry(a, struct lock, elem);
   struct lock *lb = list_entry(b, struct lock, elem);
-  struct thread *max_priority_thread_a = list_entry(list_max(&la->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
-  struct thread *max_priority_thread_b = list_entry(list_max(&lb->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
-  return max_priority_thread_a->priority>max_priority_thread_b->priority;
+  int priority_a = 0;
+  int priority_b = 0;
+  if(!list_empty(&la->semaphore.waiters)){
+    struct thread *max_priority_thread_a = list_entry(list_max(&la->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
+    priority_a = max_priority_thread_a->priority;
+  }
+  if(!list_empty(&lb->semaphore.waiters)){
+    struct thread *max_priority_thread_b = list_entry(list_max(&lb->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
+    priority_b = max_priority_thread_b->priority;
+  }
+  return priority_a>priority_b;
 }
 
 void donatePriority(struct thread *t, int new_priority){
@@ -400,13 +410,26 @@ void donatePriority(struct thread *t, int new_priority){
 /*return to the priority whose waiter has the highest priority if it is bigger than base_priority*/
 void restorePriority(){
   if(list_empty(&thread_current()->locks)){
+    //printf("No locks at hand!\n");
     thread_current()->priority = thread_current()->base_priority;
   }
   else{
-    struct lock *most_significant_lock = list_entry(list_max(&thread_current()->locks, comparePriorityLock, NULL),struct lock, elem);
-    struct thread *most_significant_thread = list_entry(list_max(&most_significant_lock->semaphore.waiters, comparePriorityElem, NULL),struct thread, elem);
-    int lower_bound_needed_priority = most_significant_thread->priority;
-    thread_current()->priority = lower_bound_needed_priority>thread_current()->base_priority?lower_bound_needed_priority:thread_current()->base_priority;
+    int priority_lower_bound = 0;
+    /*run through all the locks holden by the current thread*/
+    for(struct list_elem *temp_lock_elem = list_begin(&thread_current()->locks);temp_lock_elem!=list_end(&thread_current()->locks); temp_lock_elem = list_next(temp_lock_elem)){
+      struct lock* cur_lock = list_entry(temp_lock_elem, struct lock, elem);
+      /*find the waiter with highest priority*/
+      for(struct list_elem *temp_thread_elem = list_begin(&cur_lock->semaphore.waiters);temp_thread_elem!= list_end(&cur_lock->semaphore.waiters); temp_thread_elem = list_next(temp_thread_elem)){
+        struct thread* cur_thread = list_entry(temp_thread_elem, struct thread, elem);
+        priority_lower_bound = priority_lower_bound>cur_thread->priority?priority_lower_bound:cur_thread->priority;
+      }
+    }
+    if(priority_lower_bound>thread_current()->base_priority){
+      thread_current()->priority = priority_lower_bound;
+    }
+    else{
+      thread_current()->priority = thread_current()->base_priority;
+    }
   }
 }
 

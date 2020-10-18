@@ -27,8 +27,7 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
-/* Lock used by allocate_tid(). */
-static struct lock tid_lock;
+
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -586,7 +585,7 @@ allocate_tid (void)
   lock_acquire (&tid_lock);
   tid = next_tid++;
   lock_release (&tid_lock);
-
+  //printf("after allocating tid, priority=%d\n", thread_current()->priority);
   return tid;
 }
 
