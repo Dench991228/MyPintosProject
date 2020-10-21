@@ -68,7 +68,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_insert_ordered (&sema->waiters, &thread_current ()->elem, comparePriorityElem, NULL);
+      list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
@@ -211,12 +211,12 @@ lock_acquire (struct lock *lock)
       donatePriority(receiver, thread_current()->priority);
       l = receiver->lock_wait;
       if(l==NULL){// just sort the ready_list because the donated wasn't waiting for a lock
-        if(list_empty(&ready_list))list_sort(&ready_list, comparePriorityElem,NULL);
-        //thread_yield();
-        break;
+        //if(list_empty(&ready_list))list_sort(&ready_list, comparePriorityElem,NULL);
+        thread_yield();
+        //break;
       }
       else{// just sort the waiting list of the lock
-        list_sort(&(lock->semaphore.waiters), comparePriorityElem, NULL);
+        //list_sort(&(lock->semaphore.waiters), comparePriorityElem, NULL);
       }
       receiver = l->holder;
     }
