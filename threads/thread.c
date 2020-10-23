@@ -22,9 +22,6 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* Idle thread. */
-static struct thread *idle_thread;
-
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
@@ -628,7 +625,8 @@ void updateReadyNumber(struct thread *t, void *aux){
 /*更新每一个线程的recent_cpu*/
 void updateRecentCpu(struct thread *t, void *aux){
   myfloat new_cpu = 0;
-  new_cpu = mult(div((2*load_avg),(2*load_avg+convert_float(1))),t->recent_cpu)+convert_float(t->nice);
+  myfloat coefficient = div((2*load_avg),(2*load_avg+convert_float(1)));
+  new_cpu = mult(coefficient,t->recent_cpu)+convert_float(t->nice);
   t->recent_cpu = new_cpu;
 }
 

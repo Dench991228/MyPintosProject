@@ -4,6 +4,18 @@
 #include <round.h>
 #include <stdint.h>
 
+#include <stdint.h>
+typedef int myfloat;
+/*偏移量*/
+#define shift 16
+/*把整数转换为定点数*/
+#define convert_float(n) ((myfloat)(n<<shift))
+/*把定点数转换为整数*/
+#define convert_integer(x) (x>0?(int)((x+(1<<shift)/2)>>shift):(int)((x-(1<<shift)/2)>>shift))
+/*定点数相乘*/
+#define mult(x,y) (((int64_t)x*(int64_t)y)>>shift)
+/*定点数相除*/
+#define div(x,y) ((int64_t)x<<shift)/y
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
 

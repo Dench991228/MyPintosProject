@@ -202,7 +202,7 @@ lock_acquire (struct lock *lock)
   /*boost the holder's priority to make it run earlier*/
   /*yield after donation*/
   enum intr_level old_level = intr_disable();
-  if(lock!=NULL){
+  if(lock!=NULL&&!thread_mlfqs){
     /*update the lock we're waiting for*/
     thread_current()->lock_wait = lock;
     struct lock *l = lock;
@@ -264,7 +264,7 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable();
   release_lock(lock);
   //TODO: restore the priority before donation
-  restorePriority();
+  if(!thread_mlfqs)restorePriority();
   lock->holder = NULL;
   intr_set_level(old_level);
   sema_up (&lock->semaphore);
