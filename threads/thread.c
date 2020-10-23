@@ -12,6 +12,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -101,7 +102,8 @@ thread_start (void)
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
-
+  load_avg = 60;
+  ready_threads = 0;
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -358,33 +360,33 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  struct thread *cur = thread_current();
+  cur->nice = nice;
+  calculatePriority(cur, NULL);
+  thread_yield();
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  //printf("number of threads that are ready:%d\n", ready_threads);
+  return convert_integer(mult(load_avg,convert_float(100)));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
-thread_get_recent_cpu (void) 
-{
-  /* Not yet implemented. */
-  return 0;
+thread_get_recent_cpu (void) {
+  return convert_integer(mult(thread_current()->recent_cpu, convert_float(100)));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -476,6 +478,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->lock_wait=NULL;
   list_init(&t->locks);
   t->base_priority = priority;
+  t->recent_cpu = 0;
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -615,4 +618,21 @@ bool comparePriorityElem(struct list_elem* a, struct list_elem *b, void* aux){
   struct thread* ta = list_entry(a,struct thread, elem);
   struct thread* tb = list_entry(b,struct thread, elem);
   return ta->priority>tb->priority;
+}
+/*更新准备好的线程数量,存在aux里面*/
+void updateReadyNumber(struct thread *t, void *aux){
+ if(t->status==THREAD_READY||t->status==THREAD_RUNNING){
+   (*(int*)aux)++;
+ }
+}
+/*更新每一个线程的recent_cpu*/
+void updateRecentCpu(struct thread *t, void *aux){
+  myfloat new_cpu = 0;
+  new_cpu = mult(div((2*load_avg),(2*load_avg+convert_float(1))),t->recent_cpu)+convert_float(t->nice);
+  t->recent_cpu = new_cpu;
+}
+
+/*更新一个线程的priority*/
+void calculatePriority(struct thread *t, void *aux){
+  t->priority = convert_integer(convert_float(PRI_MAX) - t->recent_cpu/4 - (convert_float(t->nice)*2));
 }

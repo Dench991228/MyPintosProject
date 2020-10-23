@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "devices/timer.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -109,6 +110,10 @@ struct thread
    struct list locks;
    /*the original priority*/
    int base_priority;
+   /*the niceness of a thread*/
+   int nice;
+   /*recent cpu of a thread*/
+   myfloat recent_cpu;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
@@ -141,6 +146,9 @@ void thread_unblock (struct thread *);
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
+myfloat load_avg;
+
+int ready_threads;
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
@@ -164,4 +172,6 @@ void checkSleep(struct thread *t, void *aux);
 bool comparePriorityAllElem(struct list_elem* a, struct list_elem *b, void* aux);
 /*the function of comparing two threads' priority in ready_list*/
 bool comparePriorityElem(struct list_elem* a, struct list_elem *b, void* aux);
-
+void updateReadyNumber(struct thread *t, void *aux);
+void updateRecentCpu(struct thread *t, void *aux);
+void calculatePriority(struct thread *t, void *aux);
