@@ -475,7 +475,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->lock_wait=NULL;
   list_init(&t->locks);
   t->base_priority = priority;
-  t->recent_cpu = 0;
+  t->recent_cpu = convert_float(1);
+  t->nice = 0;
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -618,12 +619,13 @@ bool comparePriorityElem(struct list_elem* a, struct list_elem *b, void* aux){
 }
 /*更新准备好的线程数量,存在aux里面*/
 void updateReadyNumber(struct thread *t, void *aux){
- if(t->status==THREAD_READY||t->status==THREAD_RUNNING){
+ if((t->status==THREAD_READY||t->status==THREAD_RUNNING)&&t!=idle_thread){
    (*(int*)aux)++;
  }
 }
 /*更新每一个线程的recent_cpu*/
 void updateRecentCpu(struct thread *t, void *aux){
+  if(t==idle_thread)return;
   myfloat new_cpu = 0;
   myfloat coefficient = div((2*load_avg),(2*load_avg+convert_float(1)));
   new_cpu = mult(coefficient,t->recent_cpu)+convert_float(t->nice);
@@ -632,5 +634,6 @@ void updateRecentCpu(struct thread *t, void *aux){
 
 /*更新一个线程的priority*/
 void calculatePriority(struct thread *t, void *aux){
+  if(t==idle_thread)return;
   t->priority = convert_integer(convert_float(PRI_MAX) - t->recent_cpu/4 - (convert_float(t->nice)*2));
 }
