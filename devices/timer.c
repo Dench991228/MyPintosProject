@@ -178,17 +178,17 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   thread_foreach(checkSleep,NULL);
   /*update the recent_cpu of the running thread by plusing one*/
+  enum intr_level old_level = intr_disable();
   if(thread_current()!=idle_thread)thread_current()->recent_cpu+=convert_float(1);
   /*update the load_avg of all thread and recent_cpu for each*/
   if(thread_mlfqs&&ticks%TIMER_FREQ==0){
-    int number_ready_thread = 0;
     /*update the load_avg*/
     /*count the number of threads that is whether ready or running*/
+    int number_ready_thread = 0;
     load_avg = mult(convert_float(59),load_avg)/60;
     thread_foreach(updateReadyNumber, &number_ready_thread);
-    ready_threads = number_ready_thread;
     load_avg += convert_float(number_ready_thread)/60;
-    /*update the recent_cpu for all thread each*/
+    /* update the recent_cpu for all thread each */
     thread_foreach(updateRecentCpu, NULL);
     thread_foreach(calculatePriority, NULL);
   }
@@ -196,6 +196,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if(ticks%4==0&&thread_mlfqs){
     thread_foreach(calculatePriority, NULL);
   }
+  intr_set_level(old_level);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
